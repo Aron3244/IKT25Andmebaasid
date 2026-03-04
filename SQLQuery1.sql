@@ -345,3 +345,130 @@ add City nvarchar(30)
 
   insert into Test1 values('X')
   select * from Test1
+  select * from Test1
+
+  --kustutame veeru nimega City Employee tabelist
+
+  alter table Employees
+  drop column City
+
+  select * from Employees
+
+  --inner join
+  --kuvab neid, kellel on DepartmentName all olemas v‰‰rtus
+  --MITTE kattuvad read eemaldatakse tulemusest
+  --ja seelep‰rast ei n‰edata Jamesi ja Russelit
+  --kuna neil on  DepartmentId null
+  select Name, Gender, Salary, DepartmentName
+  from Employees
+  inner join Department
+  on Employees.DepartmentId = Department.Id
+
+  --left join
+
+  select Name, Gender, Salary, DepartmentName
+  from Employees
+  left join Department --vıib kasutada ka LEFT OUTER JOIN-i
+  on Employees.DepartmentId = Department.Id
+  -- mis on left join?
+  --N‰itab andmeid, kus vasakpoolsest tabelist isegi, siis kui seal puudub
+  --vıırvıtme reas v‰‰rtus
+
+  --right join
+  select Name, Gender, Salary, DepartmentName
+  from Employees
+  right join Department
+  on Employees.DepartmentId = Department.Id
+ --right join n‰itab paremas (Department) tabelis olevaid v‰‰rtuseid,
+ --mis ei ¸hti vasaku (Employees) tabeliga
+
+ --outer join
+ select Name, Gender, Salary, DepartmentName
+  from Employees
+  full outer join Department
+  on Employees.DepartmentId = Department.Id
+  --mılema tabeli read kuvab
+
+  --teha cross join
+  select Name, Gender, Salary, DepartmentName
+  from Employees
+  cross join Department
+ --korrutab kıik omavahel l‰bi
+
+  --teha left join, kus Employees tabelist DepartmentId on null
+ select Name, Gender, Salary, DepartmentName
+  from Employees
+  left join Department 
+  on Employees.DepartmentId = Department.Id
+  where Employees.DepartmentId is null
+
+  --teine variant ja sama tulemus
+  select Name, Gender, Salary, DepartmentName
+  from Employees
+  left join Department 
+  on Employees.DepartmentId = Department.Id
+  where Department.Id is null
+  --n‰itab ainult neid, kellel on vasakust tabelist (Employees)
+  --DepartmentId null
+
+select Name, Gender, Salary, DepartmentName
+  from Employees
+  right join Department 
+  on Employees.DepartmentId = Department.Id
+  where Employees.DepartmentId is null
+  --n‰itab ainult paremas tabelis olevat rida,
+  --mis ei kattu Employees-ga
+
+  --full join
+  --mılema tabeli mittekattuvate v‰‰rtustega read kuvab v‰lja
+
+  select Name, Gender, Salary, DepartmentName
+  from Employees
+  full join Department 
+  on Employees.DepartmentId = Department.Id
+  where Employees.DepartmentId is null
+  or Department.id is null
+  --teete adventureWorks2019 andmebaasile join p‰ringus
+  --inner join, left join, right join, cross join ja full join
+ --tabeleid sellese andmebaasi juurde ei tohi uusi tabeleid teha
+
+ SELECT c.FirstName, a.AddressLine1
+FROM SalesLT.Customer c
+INNER JOIN SalesLT.CustomerAddress ca 
+on c.CustomerID = ca.CustomerID
+INNER JOIN SalesLT.Address a
+ON ca.AddressID = a.AddressID
+
+SELECT c.FirstName, a.AddressLine1
+FROM SalesLT.Customer c
+left join SalesLT.CustomerAddress  
+ON c.CustomerID = ca.CustomerID
+left join SalesLT.Address a
+ON ca.AddressID = a.AddressID
+
+SELECT c.FirstName, a.AddressLine1
+FROM SalesLT.Customer c
+right join SalesLT.CustomerAddress ca 
+ON c.CustomerID = ca.CustomerID
+right join SalesLT.Address a
+ON ca.AddressID = a.AddressID
+
+SELECT c.FirstName, a.AddressLine1
+FROM SalesLT.Customer c
+CROSS JOIN SalesLT.Address a
+
+SELECT c.FirstName,
+       a.AddressLine1
+FROM SalesLT.Customer c
+FULL OUTER JOIN SalesLT.CustomerAddress ca
+    ON c.CustomerID = ca.CustomerID
+FULL OUTER JOIN SalesLT.Address a
+    ON ca.AddressID = a.AddressID
+
+	--mımikord peab muutuja ette kirjutama tabeli nimetuse nagu on
+	--product, Name
+	--et editro saaks aru et kummma tabeli mnuutujat soovitakse kasutada
+	-- ja ei tekiks segatust
+	--mınikord peab tabeli ette kirjutama t‰psutava info nagu on
+	--SalseLTproduckt
+	--Antud juhul on producti tabelis id vıırvıti, produckmodel on primaarvıti
