@@ -465,10 +465,221 @@ FULL OUTER JOIN SalesLT.CustomerAddress ca
 FULL OUTER JOIN SalesLT.Address a
     ON ca.AddressID = a.AddressID
 
-	--mõmikord peab muutuja ette kirjutama tabeli nimetuse nagu on
-	--product, Name
-	--et editro saaks aru et kummma tabeli mnuutujat soovitakse kasutada
-	-- ja ei tekiks segatust
-	--mõnikord peab tabeli ette kirjutama täpsutava info nagu on
-	--SalseLTproduckt
-	--Antud juhul on producti tabelis id võõrvõti, produckmodel on primaarvõti
+	--Mõnikord peab muutuja ette kirjutama tabeli nimetuse nagu on Product.Name,
+--et editor saaks aru, et kummma tabeli muutujat soovitakse kasutada ja ei tekiks
+--segadust
+select Product.Name as [Product Name], ProductNumber, ListPrice, 
+ProductModel.Name as [Product Model Name], 
+Product.ProductModelId, ProductModel.ProductModelId
+--mõnikord peab ka tabeli ette kirjutama täpsustama info
+--nagu on SalesLt.Product
+from SalesLt.Product
+inner join SalesLt.ProductModel
+--antud juhul Producti tabelis ProductModelId võõrvõti,
+--mis ProductModeli tabelis on primaarvõti
+on Product.ProductModelId = ProductModel.ProductModelId
+
+--isnull funktsiooni kastammine
+select isnull ('Ingvar', 'No Manager') as Manager
+
+--null asemel kuvab No Manager
+select coalesce(NULL, 'No Manager') as Manager
+
+alter table Employees
+add ManagerId int
+
+--neile, kellele ei ole ülemust, siis paneb neile No Manager teksti
+--kasutage left joini
+
+select E.Name as Employee, isnull(M.Name, 'No Manager') as Manager
+from Employees E
+left join Employees M
+on E.ManagerId = M.Id
+
+ select * from Employees
+
+ --kasutame inner joini
+ --kuvab ainult ManagerId all olevate isikute väärtusid
+
+ select E.Name as Employee, M.Name as Manager
+from Employees E
+inner join Employees M
+on E.ManagerId = M.Id
+
+--kõik saavad kõikide ülemused olla
+ select E.Name as Employee, M.Name as Manager
+from Employees E
+cross join Employees M
+
+--lisame tabelisse uued veerud
+alter table Employees add
+MiddleName nvarchar (30),
+LastName nvarchar (30)
+
+--muudame veeru nimetust
+sp_rename 'Employees.Name', 'FirstName'
+
+
+update Employees
+set FirstName = 'Tom', MiddleName = 'Nick', LastName = 'Jones'
+where Id = 1
+
+update Employees
+set FirstName = 'Pam', MiddleName = NULL, LastName = 'Anderson'
+where Id = 2
+
+update Employees
+set FirstName = 'John', MiddleName = NULL, LastName = NULL
+where Id = 3
+
+update Employees
+set FirstName = 'Sam', MiddleName = NULL, LastName = 'Smith'
+where Id = 4
+
+update Employees
+set FirstName = NULL, MiddleName = NULL, LastName = 'Smith'
+where Id = 4
+
+update Employees
+set FirstName = NULL, MiddleName = 'Todd', LastName = 'Someone'
+where Id = 5
+
+update Employees
+set FirstName = 'Ben', MiddleName = 'Ten', LastName = 'Seven'
+where Id = 6
+
+update Employees
+set FirstName = 'Sara', MiddleName = NULL, LastName = 'Connor'
+where Id = 7
+
+update Employees
+set FirstName = 'Valerie', MiddleName = 'Balerine', LastName = NULL
+where Id = 8
+
+update Employees
+set FirstName = 'James', MiddleName = '007', LastName = 'Bond'
+where Id = 9
+
+update Employees
+set FirstName = NULL, MiddleName = NULL, LastName = 'Crowe'
+where Id = 10
+
+--igas reast võtab esimesena täidetud lahtri ja kuvab ainult seda
+
+SELECT Id, COALESCE(FirstName, MiddleName, LastName) AS Name
+FROM Employees
+
+select * from Employees
+
+--loome kaks tabelit
+
+create table IndianCustomers
+(
+Id int identity(1,1),
+Name nvarchar(25),
+Email nvarchar(25),
+)
+
+create table UKCustomers
+(
+Id int identity(1,1),
+Name nvarchar(25),
+Email nvarchar(25),
+)
+
+--sisestame tabelisse andmeid
+insert into IndianCustomers (Name, Email)
+values ('Raj', 'R@R.com'),
+('Sam', 'S@S.com')
+
+insert into ukCustomers (Name, Email)
+values ('Ben', 'B@B.com'),
+('Sam', 'S@S.com')
+
+select * from IndianCustomers
+select * from UKCustomers
+
+--kasutame union all, mis näitab kõiki ridu
+--union all ühendab tabelid ja näitab sisu
+select Id, Name, Email from IndianCustomers
+union all
+select Id, Name, Email from UKCustomers
+
+--korduvate väärtusetga read pannakse ühte ja ei korrata
+select Id, Name, Email from IndianCustomers
+union
+select Id, Name, Email from UKCustomers
+--kasutad union all, aga sorteerid nime järgi
+
+select Id, Name, Email from IndianCustomers
+union all
+select Id, Name, Email from UKCustomers
+ORDER by Name
+
+--stored procedure
+--tavaliselt pannakse nimetuse ette sp, mis tähendab procedure
+create procedure spGetEmployees
+as begin
+select FirstName, Gender from Employees
+end
+
+--nüüd saab kasutada selle nimelist sp-d
+spGetEmployees
+exec spGetEmployees
+execute spGetEmployees
+
+create proc spGetEmployeesByGenderAndDepartment
+--@ tähendab muutujat
+@Gender nvarchar(20),
+@DepartmentId int
+as begin
+select FirstName, Gender, DepartmentId from Employees where Gender = @Gender
+and DepartmentId = @DepartmentId
+end
+
+--kui nüüd allolevat käsklust käima panna, siis nõuab gender parameetrit
+spGetEmployeesByGenderAndDepartment
+
+--õige
+spGetEmployeesByGenderAndDepartment 'Female', 1
+
+
+--niimoodi saab sp kirja pamdud järiekorrast mööda minna, kui ise paned muutuja paika
+spGetEmployeesByGenderAndDepartment @DepartmentId = 1, @Gender = 'Male'
+
+--saab sp sisu vaadata result vaates
+sp_helptext spGetEmployeesByGenderAndDepartment
+
+--kuidas nuuta sp-d ja panna sinna võti peale, et keegi teine ei saaks muuta
+--kuskile tuleb lisada with encryption 
+alter proc spGetEmployeesByGenderAndDepartment 
+--@ tähendab muutujat  
+@Gender nvarchar(20),  
+@DepartmentId int  
+as begin  
+select FirstName, Gender, DepartmentId from Employees where Gender = @Gender  
+and DepartmentId = @DepartmentId  
+end
+
+create proc spGetEmployeeCountByGender
+@Gender nvarchar(20),  
+@EmployeeCount int output
+as begin
+select @EmployeeCount = count (Id) from Employees where Gender = @Gender
+end
+
+--annab tulemuse, kus loendab ära nõuetele vastavad read
+--prindib ka tulemuse kirja teel
+--tuleb teha declare muutuja @TotalCount, mis on int
+--ececute spGetEmployeesByGenderAndDepartment sp, kus on parameeter Male ja TotalCount
+--if ja else, kui TotalCount = 0, siis tuleb tekst TotalCount is null
+--lõpus kasuta printi @TotalCounti puhul
+
+
+DECLARE @TotalCount INT
+execute spGetEmployeeCountByGender 'Male', @TotalCount out
+IF (@TotalCount = 0)
+PRINT '@TotalCount is null'
+ELSE
+    PRINT '@Total is not null'
+PRINT @TotalCount
