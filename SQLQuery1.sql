@@ -963,3 +963,61 @@ values
 
  (3, 'John','1985-08-22 12:03:36.370'),
  (4, 'Sara','1979-11-29 12:59:30.670')
+
+ select  * from  EmployeesWithDates
+
+ --kuidas võtta ühest veerust andmeid ja selle abil luua uued veerud
+
+ --vaatab DoB veerust päeva ja kuvab päeva nimetuse sõnaga
+ select Name, DateOfBirth, Datename(weekday, DateOfBirth) as [Day],
+ --vaatab veerust kuupäevasid ja kuvab nr
+ Month(DateOfBirth) as MonthNumber,
+ --vaatab Dob veerust kuud ja kuvab sõnana
+ DateNamE(MONTH, DateOfBirth) as [MonthName],
+ --võtab Dob veerust aasta
+ Year(DateOfBirth) as [Year]
+ from EmployeesWithDates
+
+ --kuvab 3 kuna USA nädal algab pühapäeval
+ select Datepart(weekday, '2026-03-24 12:59:30.670')
+ --tehke sama, aga kasutage kuu-d
+ select Datepart(MONTH, '2026-03-24 12:59:30.670')
+ --liidab stringis olevale kp 20 päeva juurde
+ select Dateadd(day, 20, '2026-03-24 12:59:30.670')
+ --lahutab 20 päeva
+ select Dateadd(day, -20, '2026-03-24 12:59:30.670')
+ --kuvab kahe stringis oleva kuudevahlelist aega nr-ga
+ select Datediff(month,'11/20/2026','01/20/2024' )
+ --tehke sama, agakasutage aastat
+ select Datediff(YEAR,'11/20/2026','01/20/2000' )
+
+ --Alguses uurite, mis on funktsioon MS SQL
+ --MS SQL (Microsoft SQL Server) funktsioon on salvestatud andmebaasiobjekt, mis võtab sisendparameetreid, töötleb neid ja tagastab tulemuse (skalaarväärtuse või tabeli).
+ --Miks seda vaja on
+ --meamiselt SELECT lausetes, WHERE klauslites või JOIN operatsioonides andmete filtreerimiseks ja teisendamiseks.
+ --pakkuda DB-s korduvkasutatud funktsionaalsust
+ --Eelised: Võimaldavad keerulisi arvutusi teha otse andmebaasi tasemel, mis vähendab võrguliiklust ja suurendab töökiirust.
+ --Puudused: madal jõudlus rida-haaval töötlemise tõttu ja piirangud päringute optimeerimisel
+
+create function fnComputeAge(@DOB datetime)
+returns nvarchar(50)
+as begin
+    declare @tempdate datetime, @years int, @months int, @days int
+    select @tempdate = @DOB
+
+    select @years = datediff(year, @tempdate, getdate()) - case when (month(@DOB) > month(getdate())) or (month(@DOB) = month(getdate()) and day(@DOB) > day(getdate()))
+    then 1 else 0 end
+    select @tempdate = dateadd(year, @Years, @tempdate)
+
+    select @months = datediff(month, @tempdate, getdate()) - case when day(@DOB) > day(getdate())
+    then 1 else 0 end
+    select @tempdate = dateadd(MONTH, @months, @tempdate)
+
+    select @days = datediff(day, @tempdate, getdate())
+
+    declare @Age nvarchar(50)
+    set @Age = cast(@years as nvarchar(4)) + ' Years ' + cast(@months as nvarchar(2))
+    + ' Months ' + cast(@days as nvarchar(2)) + ' Days old '
+
+    return @Age
+end
