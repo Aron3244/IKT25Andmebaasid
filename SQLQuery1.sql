@@ -1021,3 +1021,71 @@ as begin
 
     return @Age
 end
+
+select Id, Name, DateOfBirth, dbo.fnComputeAge(DateOfBirth) as Age from EmployeesWithDates
+
+--kui kasutame seda funktsiooni, siis saame teada tänase päeva stringis väljha tooduga
+select dbo.fnComputeAge('02/24/2010') as Age
+
+--nr peale DOB muutujat näitab, et mismoodi kuvada DOB-d
+select Id, Name, DateOfBirth,
+convert(nvarchar, DateOfBirth, 110) as ConvertedDOB
+from EmployeesWithDates
+
+select Id, Name, Name + ' - ' + cast(Id as nvarchar) as [Name-Id] from EmployeesWithDates
+
+select CAST(getdate() as date) --tänane kp
+--tänane kp, aga kasutate converti, et kuvada stringid
+select CONVERT(date, GETDATE()) 
+
+--matemaatilised funktsioonid
+select ABS(-5) --absuluutväärtusega number ja tulemuseks saame ilma miinus märgita 5
+select CEILING(4.2) --cealing ümardab ülesepoole
+select CEILING(-4.2)
+select floor(15.2)-- floor ümardab allapoole
+select floor(-15.2)
+select POWER(9, 2) -- ruudus, esimene on number teine on aste  
+select SQUARE(9) --antud juhul 9 ruudus
+select SQRT(16) --antud juhul 16 ruutjuur
+select rand() --rand on funktsioon, mis genereerib juhusliku numbri vahemikus 0 kuni 1
+--kuidas saada täisnumber iga kord
+select floor(rand() * 100) --korrutab sajaga iga suvaise numbri
+
+--iga kord näitab 10 suvalist numbrit
+declare @counter int
+set @counter = 1
+while (@counter <= 10)
+begin
+print floor(rand() * 1000)
+set @counter = @counter + 1
+end
+
+select ROUND(850.556, 2) --ümardab kaks  koma kohta ja tulemuseks on 850.56
+select ROUND(850.556, 2, 1) -- ümardab kaks komakohta ja kui parameeter on 1, siis ümardb alla
+select round(850.556, 1) -- ümardab ühe komakohaga ja tulemuseks saame 850.600
+select round(850.556, 1, 1)-- ümardab ühe komakoha pealt alla
+select round(850.556, -2) -- ümardab täisnr ülesepoole ja tulemuseks saame 900
+select round(850.556, -1) --ümardab täisnumbri alla ja tulemus on 850
+
+
+create function dbo.CalculateAge(@DOB date)
+returns int
+as begin 
+declare @Age int
+set @Age = DATEDIFF(year, @DOB, Getdate()) -
+case
+when (MONTH(@DOB) > MONTH(GETDATE())) or
+(MONTH(@DOB) = MONTH(GETDATE()) and day(@DOB) > day(Getdate()))
+then 1 else 0 end
+return @Age
+end
+exec dbo.CalculateAge '1980-12-30'
+
+--arvutab välja, kui vana on iskik ja võtab arvesse kuud ning päevad
+--antud juhul näitab kõike, kes on üle 36 a vanad
+
+select Id, Name, dbo.CalculateAge(DateOfBirth) as Age from EmployeesWithDates
+where dbo.CalculateAge(DateOfBirth) > 36
+
+
+
