@@ -1088,4 +1088,364 @@ select Id, Name, dbo.CalculateAge(DateOfBirth) as Age from EmployeesWithDates
 where dbo.CalculateAge(DateOfBirth) > 36
 
 
+--inline tabel valued functions
+alter table EmployeesWithDates
+add DepartmentId int 
+alter table EmployeesWithDates
+add Gender nvarchar(10) 
 
+update EmployeesWithDates
+set DepartmentId = 1
+where Id = 1
+
+update EmployeesWithDates
+set DepartmentId = 2
+where Id = 2
+
+update EmployeesWithDates
+set DepartmentId = 1
+where Id = 3
+
+update EmployeesWithDates
+set DepartmentId = 3
+where Id = 4
+
+update EmployeesWithDates
+set DepartmentId = 1
+where Id = 5
+
+
+
+update EmployeesWithDates
+set Gender = 'Male'
+where Id = 1
+
+update EmployeesWithDates
+set Gender = 'Female'
+where Id = 2
+
+update EmployeesWithDates
+set Gender = 'Male'
+where Id = 3
+
+update EmployeesWithDates
+set Gender = 'Female'
+where Id = 4
+
+update EmployeesWithDates
+set Gender = 'Male'
+where Id = 5
+
+Insert into EmployeesWithDates (Id, Name, DateOfBirth)
+Values (5, 'Todd', '1979-11-29 12:59:30.670')
+
+select * from EmployeesWithDates
+
+--scalar functio annb mingis vahemikus olevaid andmeid
+--inline table values ei kasuta begin ja end funktsioone
+--scalar annab väärtused ja inline annab tabeli
+
+create function fn_EmployeesByGender(@Gender nvarchar(10))
+returns table
+as 
+return (select Id, Name, DateOfBirth, DepartmentId, Gender
+from EmployeesWithDates
+where Gender = @Gender)
+
+--kuidas leida kõik naised tabelis EmployeesWithDates ja kasutada funktsiooni fn_EmployeesByGender
+
+SELECT * FROM dbo.fn_EmployeesByGender('Female')
+
+--Tahaks ainult Pami nime näha
+
+
+SELECT * FROM dbo.fn_EmployeesByGender('Female')
+WHERE Name = 'Pam'
+
+--kahest erinevast tabelist andmete võtmine ja koos kuvamine
+--esimene on funktsioon ja teine tabel
+
+select Name, Gender, DepartmentName
+from fn_EmployeesByGender('Male') E
+join Department D on D.Id = E.DepartmentId
+
+--multi tabel statment
+--inline funktsioon
+create function fn_Employees()
+returns table as
+return (select Id, Name, cast(DateofBirth as date)
+as DOB
+from EmployeesWithDates)
+
+select * from fn_Employees()
+
+--multi-state puhul peab defineerima uue tabeli verrud koos muutujatega
+--funktsiooni nimi on fn_MS_GetEmployees()
+--peab edastama meile Id, Name, DOB tabelist EmployeesWithDates
+
+CREATE FUNCTION fn_MS_GetEmployees()
+RETURNS @Table TABLE (
+    Id INT,
+    Name NVARCHAR(20),
+    DOB DATE
+)
+AS
+BEGIN
+    INSERT INTO @Table
+    SELECT Id, Name, cast(DateOfBirth as date)
+    FROM EmployeesWithDates
+    RETURN
+END
+
+
+
+select * from fn_MS_GetEmployees()
+
+
+--inline tabeli funktsioonid on paremad töötamas kuna käsitletakse vaatena
+--multi puhul on pm tegemist stored procduriga ja kulub ressurssi rohkem
+
+--muudame andmeid ja vaatame, kas inline funktsioonis on muutused kajastatud
+update fn_Employees() set Name = 'Sam1' where Id = 1
+select * from fn_Employees() --saab muta andmeid
+
+update fn_MS_GetEmployees() set Name = 'Sam2' where Id = 1
+
+--derministic vs non-derministic funktsioon
+--determinic funktsioon annavad erineva tulemuse, kui sisend on sama
+select count(*) from EmployeesWithDates
+select SQUARE(4) 
+
+--non-derministic funktsioon annavad  erineva tulemuse, kui on sama
+select getdate()
+select Current_Timestamp
+select rand()
+
+-- 1. GetAllCustomers_ITVF
+CREATE FUNCTION GetAllCustomers_ITVF()
+RETURNS TABLE
+AS
+RETURN 
+(
+    SELECT 
+        CustomerID,
+        FirstName
+    FROM SalesLT.Customer
+)
+
+
+select * from GetAllCustomers_ITVF()
+
+-- 2. GetCustomerByID_ITV
+Create function GetCustomerByID_ITV(@CustomerID int)
+returns  table 
+as return
+(
+select FirstName, LastName 
+from SalesLT.Customer
+where CustomerID = @CustomerID)
+
+
+SELECT * FROM dbo.GetCustomerByID_ITV(1);
+
+--3. GetOrdersByCustomer_ITVF
+create function GetOrdersByCustomer_ITVF(@CustomerID int)
+returns table
+as returns
+(
+select CustomerId, ProductId,Name
+from SalesLT.Product(71774) SalesLT.Customer
+join SalesLT.Product  on SalesLT.Product.Id = SalesLT.Customer.ProductId
+)
+
+
+CREATE FUNCTION GetOrdersByCustomer_ITVF(@CustomerID int)
+RETURNS TABLE
+AS
+RETURN 
+(
+    SELECT 
+        SalesLT.Customer.FirstName,
+        SalesLT.Customer.LastName,
+        SalesLT.SalesOrderHeader.SalesOrderID,
+        SalesLT.SalesOrderHeader.OrderDate,
+        SalesLT.SalesOrderHeader.TotalDue
+    FROM SalesLT.Customer
+    JOIN SalesLT.SalesOrderHeader 
+        ON SalesLT.Customer.CustomerID = SalesLT.SalesOrderHeader.CustomerID
+    WHERE SalesLT.Customer.CustomerID = @CustomerID
+)
+
+SELECT * FROM dbo.GetOrdersByCustomer_ITVF(29847)
+
+--4. GetProductsByPrice_ITVF
+create function GetProductsByPrice_ITVF(@MinPrice int, @MaxPrice int)
+returns table
+as return
+(
+SELECT 
+        SalesLT.Product.ProductID,
+        SalesLT.Product.Name,
+        SalesLT.Product.ListPrice
+    FROM SalesLT.Product
+    WHERE SalesLT.Product.ListPrice >= @MinPrice 
+      AND SalesLT.Product.ListPrice <= @MaxPrice
+)
+select * from GetProductsByPrice_ITVF(100,300)
+
+--5 GetTopExpensiveProducts_ITVF
+create function GetTopExpensiveProducts_ITVF()
+returns table 
+as return
+(
+select
+top 10
+SalesLT.Product.ProductID,
+SalesLT.Product.Name,
+SalesLT.Product.ListPrice
+from SalesLT.Product
+ORDER BY SalesLT.Product.ListPrice Desc
+)
+
+
+drop function GetTopExpensiveProducts_ITVF
+select * from GetTopExpensiveProducts_ITVF()
+
+--osa 2
+CREATE FUNCTION GetTopExpensiveProducts_MSTVF()
+RETURNS @TopProducts TABLE 
+(
+   
+    ProductName NVARCHAR(50),
+    ListPrice MONEY
+)
+AS
+BEGIN
+    INSERT INTO @TopProducts (ProductName, ListPrice)
+    SELECT TOP 10 
+        SalesLT.Product.Name, 
+        SalesLT.Product.ListPrice
+    FROM SalesLT.Product
+    ORDER BY SalesLT.Product.ListPrice DESC;
+    RETURN;
+END
+
+SELECT * FROM dbo.GetTopExpensiveProducts_MSTVF();
+
+--6. GetCustomerFullInfo_MSTVF
+CREATE FUNCTION GetCustomerFullInfo_MSTVF(@CustomerID INT)
+RETURNS @Result TABLE 
+(
+    FullName NVARCHAR(200),
+    EmailAddress NVARCHAR(50),
+    Phone NVARCHAR(30)
+)
+AS
+BEGIN
+    INSERT INTO @Result
+    SELECT 
+        SalesLT.Customer.FirstName + ' ' + SalesLT.Customer.LastName,
+        SalesLT.Customer.EmailAddress,
+        SalesLT.Customer.Phone
+    FROM SalesLT.Customer
+    WHERE SalesLT.Customer.CustomerID = @CustomerID;
+
+    RETURN;
+END
+
+SELECT * FROM dbo.GetCustomerFullInfo_MSTVF(29485)
+
+--7. GetCustomerOrderSummary_MSTVF
+CREATE FUNCTION GetCustomerOrderSummary_MSTVF(@CustomerID INT)
+RETURNS @SummaryTable TABLE
+(
+    OrderCount INT,
+    TotalSpent MONEY
+)
+AS
+BEGIN
+    INSERT INTO @SummaryTable
+    SELECT 
+        COUNT(SalesLT.SalesOrderHeader.SalesOrderID),
+        SUM(SalesLT.SalesOrderHeader.TotalDue)
+    FROM SalesLT.SalesOrderHeader
+    WHERE SalesLT.SalesOrderHeader.CustomerID = @CustomerID;
+
+    RETURN;
+END
+
+SELECT * FROM dbo.GetCustomerFullInfo_MSTVF(29485);
+
+--8. GetProductPriceCategory_MSTVF
+CREATE FUNCTION GetProductPriceCategory_MSTVF()
+RETURNS @ProductCategoryTable TABLE
+(
+    ProductName NVARCHAR(50),
+    ListPrice MONEY,
+    PriceCategory NVARCHAR(20)
+)
+AS
+BEGIN
+    INSERT INTO @ProductCategoryTable
+    SELECT 
+        SalesLT.Product.Name,
+        SalesLT.Product.ListPrice,
+        CASE 
+            WHEN SalesLT.Product.ListPrice < 100 THEN 'Odav'
+            WHEN SalesLT.Product.ListPrice BETWEEN 100 AND 1000 THEN 'Keskmine'
+            ELSE 'Kallis'
+        END
+    FROM SalesLT.Product;
+
+    RETURN;
+END
+
+SELECT * FROM dbo.GetProductPriceCategory_MSTVF();
+
+--9. GetCustomersWithOrders_MSTVF
+CREATE FUNCTION GetCustomersWithOrders_MSTVF()
+RETURNS @CustomerList TABLE
+(
+    CustomerID INT,
+    FirstName NVARCHAR(50),
+    LastName NVARCHAR(50)
+)
+AS
+BEGIN
+    INSERT INTO @CustomerList
+    SELECT DISTINCT
+        SalesLT.Customer.CustomerID,
+        SalesLT.Customer.FirstName,
+        SalesLT.Customer.LastName
+    FROM SalesLT.Customer
+    JOIN SalesLT.SalesOrderHeader 
+        ON SalesLT.Customer.CustomerID = SalesLT.SalesOrderHeader.CustomerID;
+
+    RETURN;
+END
+SELECT * FROM dbo.GetCustomersWithOrders_MSTVF();
+
+--10. GetTopCustomersBySpending_MSTVF
+CREATE FUNCTION GetTopCustomersBySpending_MSTVF()
+RETURNS @TopSpendingTable TABLE
+(
+    FullName NVARCHAR(200),
+    TotalSpending MONEY
+)
+AS
+BEGIN
+    INSERT INTO @TopSpendingTable
+    SELECT TOP 5
+        SalesLT.Customer.FirstName + ' ' + SalesLT.Customer.LastName,
+        SUM(SalesLT.SalesOrderHeader.TotalDue)
+    FROM SalesLT.Customer
+    JOIN SalesLT.SalesOrderHeader 
+        ON SalesLT.Customer.CustomerID = SalesLT.SalesOrderHeader.CustomerID
+    GROUP BY 
+        SalesLT.Customer.FirstName, 
+        SalesLT.Customer.LastName
+    ORDER BY SUM(SalesLT.SalesOrderHeader.TotalDue) DESC;
+
+    RETURN;
+END
+SELECT * FROM dbo.GetTopCustomersBySpending_MSTVF();
