@@ -2337,3 +2337,322 @@ FROM  Department
     JOIN Employee
     ON Department.Id = Employee.DepartmentId
 	order by DepartmentName
+
+
+--uuendamine CTE-e
+--lihtne CTE
+WITH Employees_Name_Gender
+as
+(
+select Id, Name, Gender from Employee
+)
+select * from Employees_Name_Gender
+
+--Kasutame JOIN-i CTE tegemiseks
+with EmployeesByDepartment
+as
+(
+select Employee.Id, Employee.Name, Department.DepartmentName
+from Employee
+join Department
+on Employee.DepartmentId = Department.Id
+)
+select * from EmployeesByDepartment
+
+--nüüd muudame andmeid  Cte-s
+with EmployeesByDepartment
+as
+(
+select Employee.Id, Employee.Name, Gender, DepartmentName
+from Employee
+join Department
+on Department.Id = Employee.DepartmentId 
+)
+UPDATE EmployeesByDepartment set Gender = 'Male' where Id = 1
+
+--kasutage eelmist CTE andmete muutmiseks, 
+--aga seekord muutke Id 1 töötaja Gender female peale ja 
+--Deaprtment name payroll peale 
+
+with EmployeesByDepartment
+as
+(
+select Employee.Id, Employee.Name, Gender, DepartmentName
+from Employee
+join Department
+on Department.Id = Employee.DepartmentId 
+)
+UPDATE EmployeesByDepartment set Gender = 'Female', DepartmentName = 'Payroll' where Id = 1
+--ei luba mitmes tabelius korraga andmeid muuta, kui on tegemist CTE-ga
+
+--Kokkuvõte CTE-st
+--1. Kui CTE baseerub ühel tabelil, siis uuendus töötab
+--2. kui CTE baseerub mitmel tabelil, siis tuelb veateade
+--3. kui CTE baseerub miteml tabelil ja tahame muuta ainult ühte tabelit,
+--siis tuleb uuendus saab tehtud.
+
+--kordub CTE
+--CTE, mis iseendale viitab, kutsutakse korduvalks CTE-ks
+--Kui tahad andemid näidata hirearhiliselislt
+
+Create Table Employee
+(
+EmployeeId int Primary key,
+Name nvarchar(20),
+ManagerId int
+)
+
+
+insert into Employee (EmployeeId, Name, ManagerId)
+values(1, 'Tom', 2),
+(2, 'Josh', NULL),
+(3, 'Mike', 2),
+(4, 'Jhon', 3),
+(5, 'Pam', 1),
+(6, 'Mary', 3),
+(7, 'James', 1),
+(8, 'Sam', 5),
+(9, 'Simon', 1)
+
+select * from Employee
+
+--Kasutame left joini, et nöah kõiki töötajaid ja nenede juhte
+select Emp.Name as [Employee Name],
+isnull(Manager.Name, 'Super Boss') as [Manager Name]
+from dbo.Employee Emp
+left join Employee Manager
+on Emp.ManagerId = Manager.EmployeeId
+
+--PEAB SAMASUGUSE TULEMUSE SAAVUTAMA, AGA KASUTAMAE CTE-d
+--seal sees kasutab joini koos union all
+
+with EmployeeCTE(Id, Name, ManagerId, [Level])
+as
+(
+    select Employee.EmployeeId, Employee.Name, Employee.ManagerId, 1
+    from Employee
+    where ManagerId is null
+
+    union all
+
+    select Employee.EmployeeId, Employee.Name, Employee.ManagerId,
+    EmployeeCTE.[Level] + 1
+    from Employee
+    join EmployeeCTE
+	on Employee.ManagerId = EmployeeCTE.Id
+)
+select EmpCTE.Name as [Employee Name],
+isnull(MgrCTE.Name, 'Super Boss') as [Manager Name],
+EmpCTE.Level as [Boss Level]
+from EmployeeCTE EmpCTE
+left join EmployeeCTE MgrCTE
+on EmpCTE.ManagerId = MgrCTE.Id
+
+--PIVOT
+--MIS ON PIVO?
+--PIVOT on SQL-i operatsioon, mis võimaldab teisendada ridu veerguteks
+create table Sale
+(
+  SalesAgent nvarchar(20),
+  SalesCountry nvarchar(20),
+  SalesAmount int
+)
+
+
+insert into Sale(SalesAgent, SalesCountry, SalesAmount )
+Values ('Tom', 'UK', 200 ),
+ ('John', 'US', 180 ),
+ ('John', 'UK', 260 ),
+ ('David', 'India', 450 ),
+('Tom', 'India', 350 ),
+('John', 'US', 200 ),
+ ('John', 'US', 130),
+ ('David', 'India', 540),
+ ('John', 'UK',  120),
+ ('David', 'UK', 220 ),
+ ('John', 'UK', 420),
+ ('David', 'US', 320),
+ ('Tom', 'US', 340),
+ ('Tom', 'UK', 660),
+ ('John', 'India',430 ),
+ ('David', 'India', 230),
+ ('David', 'India', 280),
+ ('Tom', 'UK', 480),
+ ('John', 'UK', 360),
+ ('David', 'UK', 140)
+
+ SELECT * FROM Sale
+
+ select SalesCountry, SalesAgent, sum(SalesAmount) as TotalSales
+ from Sale
+ group by SalesCountry, SalesAgent
+ ORDER by SalesCountry, SalesAgent
+
+ --kasuta pivotit, et saada sama tulemus nägu ülemuses päringus
+
+
+
+    SELECT SalesAgent, India, US, UK 
+    FROM Sale
+PIVOT (
+    
+    SUM(SalesAmount)
+   
+    FOR SalesCountry IN (India, UK, US)
+) AS PivotTable
+
+--- päring muudab unikaalsete veergude väärtust (India, US ja UK) SalesCountry veerus
+--- omaette veergudeks koos veergude SalesAmount liitmisega.
+
+create table SalsesWithId
+(
+Id int primary key,
+SalesAgent nvarchar(20),
+SalesCountry nvarchar(20),
+SalesAmount int
+)
+
+insert into SalsesWithId(Id, SalesAgent, SalesCountry, SalesAmount )
+Values (1, 'Tom', 'UK', 200 ),
+ (2, 'John', 'US', 180 ),
+ (3, 'John', 'UK', 260 ),
+ (4, 'David', 'India', 450 ),
+(5, 'Tom', 'India', 350 ),
+(6,'John', 'US', 200 ),
+ (7, 'John', 'US', 130),
+ (8, 'David', 'India', 540),
+ (9, 'John', 'UK',  120),
+ (10, 'David', 'UK', 220 ),
+ (11, 'John', 'UK', 420),
+ (12, 'David', 'US', 320),
+ (13, 'Tom', 'US', 340),
+ (14, 'Tom', 'UK', 660),
+ (15, 'John', 'India',430 ),
+ (16, 'David', 'India', 230),
+ (17, 'David', 'India', 280),
+ (18, 'Tom', 'UK', 480),
+ (19, 'John', 'UK', 360),
+ (20, 'David', 'UK', 140)
+
+ --tehke uuesti pivot, aga kasutaga SlaeWithId tabelit
+ select  SalesAgent, India, US, UK
+ from SalsesWithId
+ PIVOT
+ (
+    SUM(SalesAmount)
+   
+    FOR SalesCountry IN (India, UK, US)
+) AS PivotTable
+--- Nullide põhjuseks on Id veeru olemasolu ProductSalesWithId, mida võetakse arvesse
+--- pööramise ja grupeerimise järgi
+
+select SalesAgent, India, US, UK
+from 
+(
+   select SalesAgent, SalesCountry, SalesAmount from SalsesWithId
+)
+as SourceTable
+ PIVOT
+ (
+    SUM(SalesAmount)
+   
+    FOR SalesCountry IN (India, UK, US)
+) AS PivotTable
+
+--transactionid
+-- transaction jälgib järgmisi samme:
+-- 1. selle algus
+-- 2. käivitab DB käske
+-- 3. kontrollib vigu. Kui on viga, siis taastab algse oleku
+
+create table MilingAddress
+(
+Id int not null primary key,
+EmployeeNumber int,
+HouseNumber nvarchar(10),
+StreetAddress nvarchar(50),
+City nvarchar(50),
+PostalCode nvarchar(20)
+)
+
+insert into MilingAddress (Id, EmployeeNumber, HouseNumber, StreetAddress, City, PostalCode)
+values (1, 101, '#10', 'King Street', 'Londoon', 'CR27DW')
+
+create table PhysicalAddress
+(
+Id int not null primary key,
+EmployeeNumber int,
+HouseNumber nvarchar(10),
+StreetAddress nvarchar(50),
+City nvarchar(50),
+PostalCode nvarchar(20)
+)
+
+insert into PhysicalAddress (Id, EmployeeNumber, HouseNumber, StreetAddress, City, PostalCode)
+values (1, 101, '#10', 'King Street', 'Londoon', 'CR27DW')
+
+create proc spUpdateAddress
+as begin 
+begin try
+begin transaction 
+update MilingAddress set City = 'LONDON'
+where MilingAddress.Id = 1 and EmployeeNumber = 101
+
+update PhysicalAddress set City = 'LONDON'
+where PhysicalAddress.Id = 1 and EmployeeNumber = 101
+commit transaction
+end try
+begin catch
+rollback tran
+end catch
+end
+
+--käivitame spUpadteAddress stored procedire
+spUpdateAddress
+
+select * from MilingAddress
+select * from PhysicalAddress
+
+--kui teine uuendus ei lähe läbi, siis esimene ei lähe ka läbi
+--kõik uuendused peavad läbi minema
+
+--- transaction ACID test
+
+-- edukas transaction peab läbima ACID testi:
+-- A - atomic e aatomlikus
+-- C - consistent e järjepidevus
+-- I - isolated e isoleeritus
+-- D - durable e vastupidav
+
+--- Atomic - kõik tehingud transactionis on kas edukalt täidetud või need
+-- lükatakse tagasi. Nt, mõlemad käsud peaksid alati õnnestuma. Andmebaas
+-- teeb sellisel juhul: võtab esimese update tagasi ja veeretab selle algasendisse
+-- e taastab algsed andmed
+
+--- Consistent - kõik transactioni puudutavad andmed jäetakse loogiliselt
+-- järjepidevasse olekusse. Nt, kui laos saadaval olevaid esemete hulka
+-- vähendatakse, siis tabelis peab olema vastav kanne. Inventuur ei saa
+-- lihtsalt kaduda
+
+--- Isolated - transaction peab andmeid mõjutama, sekkumata teistesse
+-- samaaegsetesse transactionitesse. See takistab andmete muutmist, mis
+-- põhinevad sidumata tabelitel. Nt, muudatused kirjas, mis hiljem tagasi
+-- muudetakse. Enamik DB-d kasutab tehingute isoleerimise säilitamiseks
+-- lukustamist
+
+--- Durable - kui muudatus on tehtud, siis see on püsiv. Kui süsteemiviga või
+-- voolukatkestus ilmneb enne käskude komplekti valmimist, siis tühistatakse need
+-- käsud ja andmed taastatakse algsesse olekusse. Taastamine toimub peale
+-- süsteemi taaskäivitamist.
+
+--subqueries e alamkäsud
+--alamkäsud on SQL-i käsud, mis on pesastatud teise SQL-i käsu sisse
+create table ProductSales
+(
+Id int primary key identity,
+ProductId int foreign key references Product(Id),
+UnitPrice int,
+QuanitySold int
+)
+
+trunicate table product
