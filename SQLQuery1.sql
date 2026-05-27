@@ -2775,8 +2775,112 @@ BEGIN
     SET @Counter = @Counter + 1
 END
 
+select * from product
+select * from ProductSales
+
+--võrdleme subquerit ja join-i
+select Id, Name, Description
+from Product
+where Id in
+(
+select Product.Id from ProductSales
+)
+-- 3milj rida 15 sek
+
+--teeme cache puhtaks, et uut päringut ei oleks kuskile vahemällu salvestatud
+checkpoint;
+go
+dbcc DropCleanBuffers; --puhastab päringu cache-i
+go 
+dbcc FREEPROCCACHE; --puhastab täitva planeeritud cache
+go
+
+-- teeme sama tabelite peale inner join päringu
+-- Product ja ProductSales
+select distinct Product.Id, Product.Name, Product.Description
+from Product
+inner join
+ProductSales
+on Product.Id = ProductSales.ProductId
 
 
+--100 tuhat rida 9sekundiga
+--teeme cache puhtaks
+
+
+select Id, Name, Description
+from Product
+where not exists
+(select * from ProductSales where ProductId = Product.Id)
+--2,9miljonit rida 15 sekundiga
+--kasutage left joini-i  ProductId is null
+
+select Product.Id, Name, Description
+from Product
+left join
+ProductSales
+on Product.Id = ProductSales.ProductId
+where ProductSales.ProductId is null
+--2,9miljonit rida 16 sekundiga
+
+---- CURSOR-d
+
+--- relatsiooniliste DB-de haldussüsteemid saavad väga hästi hakkama
+--- SETS-ga. SETS lubab mitut päringut kombineerida üheks tulemuseks.
+--- Sinna alla käivad UNION, INTERSECT ja EXCEPT.
+
+update ProductSales set UnitPrice = 50
+where ProductSales.ProductId = 101
+
+--- kui on vaja rea kaupa andmeid töödelda, siis kõige parem oleks kasutada
+--- Cursoreid. Samas on need jõudlusele halvad ja võimalusel vältida.
+--- Soovitav oleks kasutada JOIN-i.
+
+-- Cursorid jagunevad omakorda neljaks:
+-- 1. Forward-Only e edasi-ainult
+-- 2. Static e staatilised
+-- 3. Keyset e võtmele seadistatud
+-- 4. Dynamic e dünaamiline
+
+ ---- CURSORi näide
+ if the ProductName = 'Product - 55', set UnitPrice to 55
+
+ ---nüüda alagab õige cursor
+ ---------------------------
+ declare @ProductId int
+ -- deklareerime cursori
+ declare ProductIdCursor cursor for
+ select ProductId from ProductSales
+ -- open avaldusega täidab select avaldust
+ --ja sisestab tulemuse
+ open ProductIdCursor
+
+ fetch next from ProductIdCursor into @ProductId
+ --kui tulemuses on veel ridu, siis @@Fetch-status on 0
+ while(@@FETCH_STATUS = 0)
+ begin 
+ declare @ProductName nvarchar(50)
+ select @ProductName = Name from Product where Id = @ProductId
+
+ if(@ProductName = 'Product - 55')
+ begin
+ update ProductSales set UnitPrice = 55 where ProductId = @ProductId
+ end
+
+ else if(ProductName = 'Product - 65')
+ begin
+  update ProductSales set UnitPrice = 65 where ProductId = @ProductId
+  end
+   else if(ProductName = 'Product - 1000')
+ begin
+  update ProductSales set UnitPrice = 1000 where ProductId = @ProductId
+  end
+
+  fetch next from ProductIdCursor into @ProductId
+ end
+
+ select * from Product
+  select * from ProductSales
 
 
 
