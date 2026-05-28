@@ -2847,41 +2847,143 @@ where ProductSales.ProductId = 101
 
  ---nüüda alagab õige cursor
  ---------------------------
- declare @ProductId int
- -- deklareerime cursori
- declare ProductIdCursor cursor for
- select ProductId from ProductSales
- -- open avaldusega täidab select avaldust
- --ja sisestab tulemuse
- open ProductIdCursor
+DECLARE @ProductId INT
+-- 1. Deklareerime muutuja @ProductName tsüklist VÄLJASPOOL (hea tava)
+DECLARE @ProductName NVARCHAR(50)
 
- fetch next from ProductIdCursor into @ProductId
- --kui tulemuses on veel ridu, siis @@Fetch-status on 0
- while(@@FETCH_STATUS = 0)
- begin 
- declare @ProductName nvarchar(50)
- select @ProductName = Name from Product where Id = @ProductId
+-- Deklareerime cursori
+DECLARE ProductIdCursor CURSOR FOR
+SELECT ProductId FROM ProductSales
 
- if(@ProductName = 'Product - 55')
- begin
- update ProductSales set UnitPrice = 55 where ProductId = @ProductId
- end
+-- Open avaldusega täidab select avaldust ja sisestab tulemuse
+OPEN ProductIdCursor
 
- else if(ProductName = 'Product - 65')
- begin
-  update ProductSales set UnitPrice = 65 where ProductId = @ProductId
-  end
-   else if(ProductName = 'Product - 1000')
- begin
-  update ProductSales set UnitPrice = 1000 where ProductId = @ProductId
-  end
+FETCH NEXT FROM ProductIdCursor INTO @ProductId
 
-  fetch next from ProductIdCursor into @ProductId
- end
+-- Kui tulemuses on veel ridu, siis @@FETCH_STATUS on 0
+WHILE (@@FETCH_STATUS = 0)
+BEGIN 
+    -- Võtame toote nime
+    SELECT @ProductName = Name FROM Product WHERE Id = @ProductId
 
+    -- 2. PARANDUS: Kõikjal peab olema muutuja nime ees @ märk (@ProductName)
+    IF (@ProductName = 'Product - 55')
+    BEGIN
+        UPDATE ProductSales SET UnitPrice = 55 WHERE ProductId = @ProductId
+    END
+    ELSE IF (@ProductName = 'Product - 65')
+    BEGIN
+        UPDATE ProductSales SET UnitPrice = 65 WHERE ProductId = @ProductId
+    END
+    ELSE IF (@ProductName = 'Product - 1000')
+    BEGIN
+        UPDATE ProductSales SET UnitPrice = 1000 WHERE ProductId = @ProductId
+    END
+
+ 
+    FETCH NEXT FROM ProductIdCursor INTO @ProductId
+END
+
+
+
+
+ CLOSE ProductIdCursor 
+DEALLOCATE ProductIdCursor
+
+  
  select * from Product
   select * from ProductSales
 
+
+-- 1. Lisame tooted, kui neid veel pole
+IF NOT EXISTS (SELECT 1 FROM Product WHERE Name = 'Product - 55')
+BEGIN
+    INSERT INTO Product (Name) VALUES ('Product - 55'), ('Product - 65'), ('Product - 1000');
+END
+
+-- 2. Lisame müügiread (Seome ProductId kaudu), eeldades et UnitPrice on alguses 0
+INSERT INTO ProductSales (ProductId, UnitPrice)
+SELECT Id, 0 
+FROM Product 
+WHERE Name IN ('Product - 55', 'Product - 65', 'Product - 1000');
+
+
+--- asendame cursorid JOIN-ga
+update ProductSales
+set UnitPrice =
+    case
+        when Name = 'Product - 55' then 155
+		 when Name = 'Product - 65' then 165
+		 --like ja = on sama tähendusega
+		  when Name like 'Product - 1000' then 10001
+    end
+from ProductSales
+join Product
+on Product.Id = ProductSales.ProductId
+where Name = 'Product - 55' or Name = 'Product - 65' or
+Name like 'Product - 1000'
+
+--2.0
+ProductSales on Product.Id = ProductSales.ProductId
+where(Name = 'Product - 55' or Name = 'Product - 65' or Name = 'Product - 1000')
+
+
+--tabelite info
+--nimekiri süsteemi objedest
+select * from sysobjects where xtype = 'S'
+
+--tabelite nimkeiri
+select * from sys.tables
+--tabelite nimkeiri tabelitest ja view-st
+SELECT * FROM INFORMATION_SCHEMA.TABLES
+
+--kui soovid erinevaid objektitüüpe vaadata, siis kasuta XTYPE süntaksit
+select distinct XTYPE from sysobjects
+
+-- IT - internal table      (sisemine tabel)
+-- P - stored procedure     (salvestatud protseduur)
+-- PK - primary key constraint (primaarvõtme kitsendus)
+-- S - system table         (süsteemne tabel)
+-- SQ - service queue       (teenuse järjekord)
+-- U - user table           (kasutaja loodud tabel)
+-- V - view                 (vaade)
+
+-- annab teada, kas sellise nimega tabel on olemas
+if not exists (select * from INFORMATION_SCHEMA.TABLES where TABLE_Name = 'Employee')
+begin
+    create table Employee
+	(
+	Id int primary key,
+	Name nvarchar(30),
+	ManagerId int
+	)
+	print 'Tabel has been created'
+end
+else
+begin
+    print 'Table already exists'
+end
+--saab kasuatada ka sisseehitatud funktsioon: OBJECT_ID()
+if OBJECT_ID('Employee') is null
+begin
+  print 'Tabel created'
+end
+else
+begin
+  print 'Tabel already exists'
+end
+
+--tahame sama nimega ära kustutada ja siis uuesti luua 
+if OBJECT_ID('Employee') is not null
+begin
+  drop table Employee
+end
+  create table Employee
+  (
+  Id int primary key,
+  Name nvarchar(30),
+  ManagerId int
+  )
 
 
 
