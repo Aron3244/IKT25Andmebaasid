@@ -2985,6 +2985,45 @@ end
   ManagerId int
   )
 
+ ------------------------
+ Create Database  HarjutusDB
 
 
+Create table Employee
+(
+Id int primary key,
+Name nvarchar(30),
+Position nvarchar(20),
+Salary int
+)
 
+create login ArendajaLogin with password = 'Arendaja', default_database = HarjutusDB
+
+create login RaamatupidajaLogin with password = 'Raamatupidaja', default_database = HarjutusDB
+
+create login AdminLogin with password = 'Admin', default_database = HarjutusDB
+
+create user ArendajaUser for login ArendajaLogin
+
+
+grant select on Employee to ArendajaUser
+
+grant select, update on Employee to RaamatupidajaUser 
+
+alter role db_owner add member AdminUser 
+
+create role Vaatajad
+grant select on Employee to Vaatajad
+
+alter role Vaatajad add member ArendajaUser
+
+deny delete on Employee to RaamatupidajaUser
+
+create user TestUser with password = 'TestUser'
+grant select on Employee to TestUser
+
+select name, type_desc from sys.database_principals where type in ('S', 'E', 'X')
+
+select * from Employee
+update Employee set Salary = 2300 where ID = 1 
+ delete from Employee where ID = 1 
