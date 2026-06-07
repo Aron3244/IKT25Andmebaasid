@@ -3003,7 +3003,9 @@ create login RaamatupidajaLogin with password = 'Raamatupidaja', default_databas
 
 create login AdminLogin with password = 'Admin', default_database = HarjutusDB
 
-create user ArendajaUser for login ArendajaLogin
+create user ArendajaUser for login ArendajaLogin 
+create user RaamatupidajaUser for login RaamatupidajaLogin
+create user AdminUser for login AdminLogin
 
 
 grant select on Employee to ArendajaUser
